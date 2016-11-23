@@ -1,3 +1,5 @@
+import beautifyImports from './helpers/beautify-imports';
+
 export default function(file, api, options) {
   const j = api.jscodeshift;
 
@@ -65,5 +67,5 @@ export default function(file, api, options) {
       return j.callExpression(j.identifier('describe'), [description, func])
     });
 
-  return root.toSource(printOptions)
+  return beautifyImports(root.toSource(printOptions));
 }

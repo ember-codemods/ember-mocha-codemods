@@ -1,3 +1,5 @@
+import beautifyImports from './helpers/beautify-imports';
+
 export default function(file, api, options) {
   const j = api.jscodeshift;
 
@@ -38,5 +40,5 @@ export default function(file, api, options) {
   // Remove remaining `import 'ember-mocha';` nodes
   emberMochaImports.filter(p => p.node.specifiers.length === 0).remove();
 
-  return root.toSource(printOptions)
+  return beautifyImports(root.toSource(printOptions));
 }

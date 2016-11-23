@@ -1,6 +1,6 @@
 /* jshint expr:true */
 import { expect } from 'chai';
-import {describe} from 'mocha';
+import { describe } from 'mocha';
 import {
   setupTest,
   it

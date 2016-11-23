@@ -2,7 +2,7 @@ import {
   setupModelTest,
   it
 } from 'ember-mocha';
-import {beforeEach, describe} from 'mocha';
+import { beforeEach, describe } from 'mocha';
 
 describe('Unit: Model: setting', function () {
   setupModelTest('setting');
