@@ -19,6 +19,7 @@ export default function(file, api, options) {
   }
 
   let it = j.importSpecifier(j.identifier('it'));
+  let newMochaImport;
 
   // Find existing `mocha` imports
   let mochaImports = root.find(j.ImportDeclaration, { source: { value: 'mocha' } });
@@ -31,14 +32,41 @@ export default function(file, api, options) {
     }
   } else {
     // Add new `import {it} from 'mocha'` node
-    emberMochaImports.insertBefore(j.importDeclaration([it], j.literal('mocha')));
+    newMochaImport = j.importDeclaration([it], j.literal('mocha'));
+    emberMochaImports.insertBefore(newMochaImport);
   }
 
   // Remove `it` from `ember-mocha` imports
   emberMochaItImports.remove();
 
   // Remove remaining `import 'ember-mocha';` nodes
-  emberMochaImports.filter(p => p.node.specifiers.length === 0).remove();
+  emberMochaImports
+    .filter(p => p.node.specifiers.length === 0)
+    .forEach(p => {
+      // Apply comments to next sibling
+      let comments = p.node.comments;
+      if (!comments || comments.length === 0) {
+        return;
+      }
+
+      if (newMochaImport) {
+        newMochaImport.comments = comments;
+        return;
+      }
+
+      let siblings = p.parent.node.body;
+
+      let index = siblings.indexOf(p.node);
+      if (index === -1) {
+        return;
+      }
+
+      let nextSibling = siblings[index + 1];
+      if (nextSibling) {
+        nextSibling.comments = comments;
+      }
+    })
+    .remove();
 
   return beautifyImports(root.toSource(printOptions));
 }
