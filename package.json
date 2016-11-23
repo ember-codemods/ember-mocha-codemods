@@ -1,0 +1,34 @@
+{
+  "name": "ember-mocha-codemods",
+  "version": "0.0.0",
+  "description": "codemod scripts for ember-mocha",
+  "keywords": [
+    "codemod",
+    "ember",
+    "ember-mocha",
+    "mocha"
+  ],
+  "homepage": "https://github.com/Turbo87/ember-mocha-codemods#readme",
+  "bugs": {
+    "url": "https://github.com/Turbo87/ember-mocha-codemods/issues"
+  },
+  "license": "MIT",
+  "author": "Tobias Bieniek <tobias.bieniek@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Turbo87/ember-mocha-codemods.git"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "test": "jest"
+  },
+  "dependencies": {
+    "jscodeshift": "^0.3.30"
+  },
+  "devDependencies": {
+    "babel-jest": "^17.0.2",
+    "babel-preset-es2015": "^6.18.0",
+    "eslint": "^3.10.2",
+    "jest": "^17.0.3"
+  }
+}
