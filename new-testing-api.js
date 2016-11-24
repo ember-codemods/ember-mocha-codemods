@@ -12,7 +12,7 @@ export default function(file, api, options) {
 
   // Find `ember-mocha` imports
   let emberMochaImports = root.find(j.ImportDeclaration, { source: { value: 'ember-mocha' } });
-  if (emberMochaImports.length === 0) {
+  if (emberMochaImports.size() === 0) {
     return file.source;
   }
 
@@ -21,7 +21,7 @@ export default function(file, api, options) {
     .filter(p => Object.keys(mapping).includes(p.node.imported.name))
     .replaceWith(p => j.importSpecifier(j.identifier(mapping[p.node.imported.name])));
 
-  if (adjustedImports.length === 0) {
+  if (adjustedImports.size() === 0) {
     return file.source;
   }
 
@@ -29,10 +29,10 @@ export default function(file, api, options) {
 
   // Find existing `mocha` imports
   let mochaImports = root.find(j.ImportDeclaration, { source: { value: 'mocha' } });
-  if (mochaImports.length > 0) {
+  if (mochaImports.size() > 0) {
     // Find `describe` in existing `mocha` imports
     let mochaItImports = mochaImports.find(j.ImportSpecifier, { imported: { name: 'describe' } });
-    if (mochaItImports.length === 0) {
+    if (mochaItImports.size() === 0) {
       // Add `describe` to existing `mocha` imports
       mochaImports.forEach(p => p.node.specifiers.push(describe))
     }
