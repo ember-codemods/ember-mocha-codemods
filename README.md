@@ -37,9 +37,9 @@ jscodeshift -t https://raw.githubusercontent.com/Turbo87/ember-mocha-codemods/ma
 Before:
 
 ```js
-import {expect} from 'chai';
-import {it} from 'mocha';
-import {describeModule} from 'ember-mocha';
+import { expect } from 'chai';
+import { it } from 'mocha';
+import { describeModule } from 'ember-mocha';
 
 describeModule(
   'route:subscribers',
@@ -59,9 +59,9 @@ describeModule(
 After:
 
 ```js
-import {expect} from 'chai';
-import {it, describe} from 'mocha';
-import {setupTest} from 'ember-mocha';
+import { expect } from 'chai';
+import { it, describe } from 'mocha';
+import { setupTest } from 'ember-mocha';
 
 describe('Unit: Route: subscribers', function() {
   setupTest('route:subscribers', {
@@ -87,13 +87,13 @@ jscodeshift -t https://raw.githubusercontent.com/Turbo87/ember-mocha-codemods/ma
 Before:
 
 ```js
-import {it} from 'ember-mocha';
+import { it } from 'ember-mocha';
 ```
 
 After:
 
 ```js
-import {it} from 'mocha';
+import { it } from 'mocha';
 ```
 
 
