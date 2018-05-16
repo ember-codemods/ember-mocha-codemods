@@ -17,10 +17,23 @@ module.exports = function(file, api) {
     });
   }
 
+  const LIFE_CYCLE_METHODS = [
+    {expression: { callee: { name: 'before' }}},
+    {expression: { callee: { name: 'beforeEach' }}},
+    {expression: { callee: { name: 'afterEach' }}},
+    {expression: { callee: { name: 'after' }}},
+  ];
+
+  function isLifecycleHook(node) {
+    return LIFE_CYCLE_METHODS.some(matcher => j.match(node, matcher));
+  }
+
+
   class ModuleInfo {
     constructor(p) {
       this.isEmberMochaDescribe = false;
       this.tests = [];
+      this.lifecycles = [];
       let describeBody = p.node.expression.arguments[1].body.body;
 
       describeBody.forEach(node => {
@@ -35,6 +48,10 @@ module.exports = function(file, api) {
         if (j.match(node, { expression: { callee: { name: "it" } } })) {
           this.tests.push(node.expression);
         }
+
+        if (isLifecycleHook(node)) {
+          this.lifecycles.push(node.expression);
+        }
       });
     }
 
@@ -43,12 +60,18 @@ module.exports = function(file, api) {
       this.setupTypeMethodInvocationNode.callee.name = this.setupType;
     }
 
+    _updateExpressionForTest(expression) {
+      if(this.setupType === 'setupRenderingTest') {
+        processExpressionForRenderingTest(expression)
+      }
+    }
+
     updateTests() {
-      this.tests.forEach((tExpression) => {
-        if(this.setupType === 'setupRenderingTest') {
-          processExpressionForRenderingTest(tExpression)
-        }
-      });
+      this.tests.forEach(e => this._updateExpressionForTest(e));
+    }
+
+    updateLifecycles() {
+      this.lifecycles.forEach(e => this._updateExpressionForTest(e));
     }
   }
 
@@ -222,6 +245,8 @@ module.exports = function(file, api) {
       mod.updateSetupInvocation();
 
       mod.updateTests();
+
+      mod.updateLifecycles();
     });
   }
 
