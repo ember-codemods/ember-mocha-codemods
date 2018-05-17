@@ -37,9 +37,24 @@ module.exports = function(file, api) {
 
       describeBody.forEach(node => {
         if (isSetupTypeMethod(node)) {
+          let calleeName = node.expression.callee.name;
           let options = node.expression.arguments[1];
-          this.hasIntegrationFlag = options.properties.some(p => p.key.name === "integration");
-          this.setupType = this.hasIntegrationFlag ? "setupRenderingTest" : "setupTest";
+
+          if(options) {
+            this.hasIntegrationFlag = options.properties.some(p => p.key.name === "integration");
+          }
+
+
+          if(calleeName === 'setupComponentTest') {
+            if (this.hasIntegrationFlag) {
+              this.setupType = "setupRenderingTest";
+              this.subjectContainerKey = null;
+            } else {
+              this.setupType = "setupTest";
+              this.subjectContainerKey = j.literal(`component:${node.expression.arguments[0].value}`);
+            }
+          }
+
           this.setupTypeMethodInvocationNode = node.expression;
           this.isEmberMochaDescribe = true;
         }
@@ -166,6 +181,91 @@ module.exports = function(file, api) {
       });
   }
 
+  function processSubject(testExpression, moduleInfo) {
+    let subject = moduleInfo.subjectContainerKey;
+    let thisDotSubjectUsage = j(testExpression).find(j.CallExpression, {
+      callee: {
+        type: 'MemberExpression',
+        object: {
+          type: 'ThisExpression',
+        },
+        property: {
+          name: 'subject',
+        },
+      },
+    });
+
+    if (thisDotSubjectUsage.size() === 0) {
+      return;
+    }
+
+    thisDotSubjectUsage.forEach(p => {
+      let options = p.node.arguments[0];
+      let split = subject.value.split(':');
+      let subjectType = split[0];
+      let subjectName = split[1];
+      let isSingletonSubject = ['model', 'component'].indexOf(subjectType) === -1;
+
+      // if we don't have `options` and the type is a singleton type
+      // use `this.owner.lookup(subject)`
+      if (!options && isSingletonSubject) {
+        p.replace(
+          j.callExpression(
+            j.memberExpression(
+              j.memberExpression(j.thisExpression(), j.identifier('owner')),
+              j.identifier('lookup')
+            ),
+            [subject]
+          )
+        );
+      } else if (subjectType === 'model') {
+        ensureImportWithSpecifiers({
+          source: '@ember/runloop',
+          specifiers: ['run'],
+        });
+
+        p.replace(
+          j.callExpression(j.identifier('run'), [
+            j.arrowFunctionExpression(
+              [],
+              j.callExpression(
+                j.memberExpression(
+                  j.callExpression(
+                    j.memberExpression(
+                      j.memberExpression(j.thisExpression(), j.identifier('owner')),
+                      j.identifier('lookup')
+                    ),
+                    [j.literal('service:store')]
+                  ),
+                  j.identifier('createRecord')
+                ),
+                [j.literal(subjectName), options].filter(Boolean)
+              ),
+              true
+            ),
+          ])
+        );
+      } else {
+        p.replace(
+          j.callExpression(
+            j.memberExpression(
+              j.callExpression(
+                j.memberExpression(
+                  j.memberExpression(j.thisExpression(), j.identifier('owner')),
+                  j.identifier('factoryFor')
+                ),
+                [subject]
+              ),
+              j.identifier('create')
+            ),
+            [options].filter(Boolean)
+          )
+        );
+      }
+    });
+  }
+
+
   function findTestHelperUsageOf(collection, property) {
     return collection.find(j.ExpressionStatement, {
       expression: {
@@ -263,8 +363,8 @@ module.exports = function(file, api) {
 
     importStatement.get("specifiers").replace(
       Array.from(combinedSpecifiers)
-        .sort()
-        .map(s => j.importSpecifier(j.identifier(s)))
+      .sort()
+      .map(s => j.importSpecifier(j.identifier(s)))
     );
   }
 
@@ -303,7 +403,7 @@ module.exports = function(file, api) {
           emberMochaSpecifiers.add(mappedName);
         }
       })
-      // Remove all existing import specifiers
+    // Remove all existing import specifiers
       .remove();
 
     emberMochaImports
@@ -344,6 +444,8 @@ module.exports = function(file, api) {
       updateOnCalls(p);
 
       updateInjectCalls(p);
+
+      processSubject(p, mod);
     });
   }
 
