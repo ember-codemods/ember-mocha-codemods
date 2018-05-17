@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 module.exports = function(file, api) {
   const j = api.jscodeshift;
@@ -18,16 +18,15 @@ module.exports = function(file, api) {
   }
 
   const LIFE_CYCLE_METHODS = [
-    {expression: { callee: { name: 'before' }}},
-    {expression: { callee: { name: 'beforeEach' }}},
-    {expression: { callee: { name: 'afterEach' }}},
-    {expression: { callee: { name: 'after' }}},
+    { expression: { callee: { name: "before" } } },
+    { expression: { callee: { name: "beforeEach" } } },
+    { expression: { callee: { name: "afterEach" } } },
+    { expression: { callee: { name: "after" } } }
   ];
 
   function isLifecycleHook(node) {
     return LIFE_CYCLE_METHODS.some(matcher => j.match(node, matcher));
   }
-
 
   class ModuleInfo {
     constructor(p) {
@@ -61,8 +60,8 @@ module.exports = function(file, api) {
     }
 
     _updateExpressionForTest(expression) {
-      if(this.setupType === 'setupRenderingTest') {
-        processExpressionForRenderingTest(expression)
+      if (this.setupType === "setupRenderingTest") {
+        processExpressionForRenderingTest(expression);
       }
     }
 
@@ -73,6 +72,18 @@ module.exports = function(file, api) {
     updateLifecycles() {
       this.lifecycles.forEach(e => this._updateExpressionForTest(e));
     }
+  }
+
+  function updateRegisterCalls(e) {
+    j(e)
+      .find(j.MemberExpression, {
+        object: { type: "ThisExpression" },
+        property: { name: "register" }
+      })
+      .forEach(path => {
+        let thisDotOwner = j.memberExpression(j.thisExpression(), j.identifier("owner"));
+        path.replace(j.memberExpression(thisDotOwner, path.value.property));
+      });
   }
 
   function findTestHelperUsageOf(collection, property) {
@@ -172,8 +183,8 @@ module.exports = function(file, api) {
 
     importStatement.get("specifiers").replace(
       Array.from(combinedSpecifiers)
-      .sort()
-      .map(s => j.importSpecifier(j.identifier(s)))
+        .sort()
+        .map(s => j.importSpecifier(j.identifier(s)))
     );
   }
 
@@ -212,7 +223,7 @@ module.exports = function(file, api) {
           emberMochaSpecifiers.add(mappedName);
         }
       })
-    // Remove all existing import specifiers
+      // Remove all existing import specifiers
       .remove();
 
     emberMochaImports
@@ -247,6 +258,8 @@ module.exports = function(file, api) {
       mod.updateTests();
 
       mod.updateLifecycles();
+
+      updateRegisterCalls(p);
     });
   }
 
@@ -256,4 +269,4 @@ module.exports = function(file, api) {
   processDescribeBlock();
 
   return root.toSource(printOptions);
-}
+};
