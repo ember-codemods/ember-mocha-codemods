@@ -86,6 +86,36 @@ module.exports = function(file, api) {
       });
   }
 
+  function updateOnCalls(node) {
+    let ctx = j(node);
+    let usages = ctx.find(j.CallExpression, {
+      callee: {
+        type: "MemberExpression",
+        object: {
+          type: "ThisExpression"
+        },
+        property: {
+          name: "on"
+        }
+      }
+    });
+
+    usages.forEach(p => {
+      let actionName = p.node.arguments[0].value;
+
+      p.value.callee.property.name = "set";
+
+      ctx.find(j.TemplateElement).forEach(e => {
+        if (e.value.value.raw.indexOf(actionName) !== -1) {
+          let currentValue =  e.value.value.raw;
+          let reg = new RegExp(`("|')${actionName}("|')`);
+
+          e.value.value.raw = currentValue.replace(reg, actionName);
+        }
+      });
+    });
+  }
+
   function findTestHelperUsageOf(collection, property) {
     return collection.find(j.ExpressionStatement, {
       expression: {
@@ -260,6 +290,8 @@ module.exports = function(file, api) {
       mod.updateLifecycles();
 
       updateRegisterCalls(p);
+
+      updateOnCalls(p);
     });
   }
 
