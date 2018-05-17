@@ -397,7 +397,9 @@ module.exports = function(file, api) {
             })
             .forEach(p => {
               let mod = new ModuleInfo(p);
-              emberMochaSpecifiers.add(mod.setupType);
+              if(mod.setupType) {
+                emberMochaSpecifiers.add(mod.setupType);
+              }
             });
         } else {
           emberMochaSpecifiers.add(mappedName);
