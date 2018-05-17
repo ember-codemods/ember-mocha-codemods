@@ -107,13 +107,63 @@ module.exports = function(file, api) {
 
       ctx.find(j.TemplateElement).forEach(e => {
         if (e.value.value.raw.indexOf(actionName) !== -1) {
-          let currentValue =  e.value.value.raw;
+          let currentValue = e.value.value.raw;
           let reg = new RegExp(`("|')${actionName}("|')`);
 
           e.value.value.raw = currentValue.replace(reg, actionName);
         }
       });
     });
+  }
+
+  function updateInjectCalls(node) {
+    let ctx = j(node);
+    ctx
+      .find(j.CallExpression, {
+        callee: {
+          type: "MemberExpression",
+          object: {
+            object: {
+              type: "ThisExpression"
+            },
+            property: {
+              name: "inject"
+            }
+          }
+        }
+      })
+      .forEach(p => {
+        let injectType = p.node.callee.property.name;
+        let injectedName = p.node.arguments[0].value;
+        let localName = injectedName;
+        if (p.node.arguments[1]) {
+          let options = p.node.arguments[1];
+          let as = options.properties.find(property => property.key.name === "as");
+          if (as) {
+            localName = as.value.value;
+          }
+        }
+        let property = j.identifier(localName);
+        // rudimentary attempt to confirm the property name is valid
+        // as `this.propertyName`
+        if (!localName.match(/^[a-zA-Z_][a-zA-Z0-9]+$/)) {
+          // if not, use `this['property-name']`
+          property = j.literal(localName);
+        }
+        let assignment = j.assignmentExpression(
+          "=",
+          j.memberExpression(j.thisExpression(), property),
+          j.callExpression(
+            j.memberExpression(
+              j.memberExpression(j.thisExpression(), j.identifier("owner")),
+              j.identifier("lookup")
+            ),
+            [j.literal(`${injectType}:${injectedName}`)]
+          )
+        );
+
+        p.replace(assignment);
+      });
   }
 
   function findTestHelperUsageOf(collection, property) {
@@ -292,6 +342,8 @@ module.exports = function(file, api) {
       updateRegisterCalls(p);
 
       updateOnCalls(p);
+
+      updateInjectCalls(p);
     });
   }
 
