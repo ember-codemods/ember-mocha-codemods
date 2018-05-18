@@ -67,11 +67,33 @@ module.exports = function(file, api) {
           this.lifecycles.push(node.expression);
         }
       });
+
+      if (this.isEmberMochaDescribe === false) {
+        let current = p.parentPath;
+
+        while(current) {
+
+          let matcher = { expression: { callee: { name: 'describe' } } };
+
+          if (j.match(current.node, matcher)) {
+            let parentMod = new ModuleInfo(current);
+            // debugger
+            if (parentMod.isEmberMochaDescribe) {
+              this.isEmberMochaDescribe = true;
+              this.setupType = parentMod.setupType;
+              this.subjectContainerKey = this.subjectContainerKey;
+            }
+          }
+          current = current.parentPath;
+        }
+      }
     }
 
     updateSetupInvocation() {
-      this.setupTypeMethodInvocationNode.arguments = [];
-      this.setupTypeMethodInvocationNode.callee.name = this.setupType;
+      if (this.setupTypeMethodInvocationNode) {
+        this.setupTypeMethodInvocationNode.arguments = [];
+        this.setupTypeMethodInvocationNode.callee.name = this.setupType;
+      }
     }
 
     _updateExpressionForTest(expression) {
@@ -429,26 +451,29 @@ module.exports = function(file, api) {
       return;
     }
 
+    let coll = [];
     describes.forEach(p => {
       let mod = new ModuleInfo(p);
-      if (!mod.isEmberMochaDescribe) {
-        return;
-      }
-
-      mod.updateSetupInvocation();
-
-      mod.updateTests();
-
-      mod.updateLifecycles();
-
-      updateRegisterCalls(p);
-
-      updateOnCalls(p);
-
-      updateInjectCalls(p);
-
-      processSubject(p, mod);
+      coll.push({ moduleInfo: mod, path: p });
     });
+
+    coll.forEach(({moduleInfo, path}) => {
+      if (!moduleInfo.isEmberMochaDescribe) { return; }
+
+      moduleInfo.updateSetupInvocation();
+
+      moduleInfo.updateTests();
+
+      moduleInfo.updateLifecycles();
+
+      updateRegisterCalls(path);
+
+      updateOnCalls(path);
+
+      updateInjectCalls(path);
+
+      processSubject(path, moduleInfo);
+    })
   }
 
   const printOptions = { quote: "single", wrapColumn: 100 };
