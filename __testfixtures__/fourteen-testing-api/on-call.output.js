@@ -8,11 +8,11 @@ import hbs from 'htmlbars-inline-precompile';
 describe('GravatarImageComponent', function() {
   setupRenderingTest();
 
-  this.set('bar', function() {});
-
-  this.set('foo', function() {});
-
   beforeEach(async function() {
+    this.set('bar', function() {});
+
+    this.set('foo', function() {});
+
     await render(hbs`{{gravatar-image foo=(action bar)}}`);
   });
 

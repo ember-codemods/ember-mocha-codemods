@@ -9,11 +9,11 @@ describe('GravatarImageComponent', function() {
     integration: true
   });
 
-  this.on('bar', function() {});
-
-  this.on('foo', function() {});
-
   beforeEach(function() {
+    this.on('bar', function() {});
+
+    this.on('foo', function() {});
+
     this.render(hbs`{{gravatar-image foo=(action 'bar')}}`);
   });
 

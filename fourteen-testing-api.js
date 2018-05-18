@@ -27,9 +27,14 @@ module.exports = function(file, api) {
   function isLifecycleHook(node) {
     return LIFE_CYCLE_METHODS.some(matcher => j.match(node, matcher));
   }
+  const MODULE_INFO_CACHE = new Map();
 
   class ModuleInfo {
     constructor(p) {
+      if (MODULE_INFO_CACHE.has(p)) {
+        return MODULE_INFO_CACHE.get(p);
+      }
+
       this.isEmberMochaDescribe = false;
       this.tests = [];
       this.lifecycles = [];
@@ -43,7 +48,6 @@ module.exports = function(file, api) {
           if(options) {
             this.hasIntegrationFlag = options.properties.some(p => p.key.name === "integration");
           }
-
 
           if(calleeName === 'setupComponentTest') {
             if (this.hasIntegrationFlag) {
@@ -76,9 +80,8 @@ module.exports = function(file, api) {
           let matcher = { expression: { callee: { name: 'describe' } } };
 
           if (j.match(current.node, matcher)) {
-            let parentMod = new ModuleInfo(current);
-            // debugger
-            if (parentMod.isEmberMochaDescribe) {
+            let parentMod = MODULE_INFO_CACHE.get(current);
+            if (parentMod && parentMod.isEmberMochaDescribe) {
               this.isEmberMochaDescribe = true;
               this.setupType = parentMod.setupType;
               this.subjectContainerKey = this.subjectContainerKey;
@@ -87,6 +90,22 @@ module.exports = function(file, api) {
           current = current.parentPath;
         }
       }
+
+      MODULE_INFO_CACHE.set(p, this);
+    }
+
+    update() {
+      this.updateSetupInvocation();
+
+      this.updateTests();
+
+      this.updateLifecycles();
+
+      this.updateRegisterCalls();
+
+      this.updateInjectCalls();
+
+      this.processSubject();
     }
 
     updateSetupInvocation() {
@@ -108,6 +127,18 @@ module.exports = function(file, api) {
 
     updateLifecycles() {
       this.lifecycles.forEach(e => this._updateExpressionForTest(e));
+    }
+
+    updateRegisterCalls() {
+      [...this.lifecycles, ...this.tests].forEach(updateRegisterCalls);
+    }
+
+    updateInjectCalls() {
+      [...this.lifecycles, ...this.tests].forEach(updateInjectCalls);
+    }
+
+    processSubject() {
+      [...this.lifecycles, ...this.tests].forEach(e => processSubject(e, this));
     }
   }
 
@@ -451,28 +482,13 @@ module.exports = function(file, api) {
       return;
     }
 
-    let coll = [];
-    describes.forEach(p => {
-      let mod = new ModuleInfo(p);
-      coll.push({ moduleInfo: mod, path: p });
-    });
-
-    coll.forEach(({moduleInfo, path}) => {
+    describes.forEach(path => {
+      let moduleInfo = new ModuleInfo(path);
       if (!moduleInfo.isEmberMochaDescribe) { return; }
 
-      moduleInfo.updateSetupInvocation();
-
-      moduleInfo.updateTests();
-
-      moduleInfo.updateLifecycles();
-
-      updateRegisterCalls(path);
+      moduleInfo.update();
 
       updateOnCalls(path);
-
-      updateInjectCalls(path);
-
-      processSubject(path, moduleInfo);
     })
   }
 
