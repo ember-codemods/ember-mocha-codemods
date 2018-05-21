@@ -63,6 +63,12 @@ module.exports = function(file, api) {
           this.isEmberMochaDescribe = true;
         }
 
+        let testPaths = j(node).find(j.ExpressionStatement, { expression: { callee: { name: 'it' } }}).paths();
+
+        if (testPaths.length > 0) {
+          testPaths.forEach(p => this.tests.push(p.value));
+        }
+
         if (j.match(node, { expression: { callee: { name: "it" } } })) {
           this.tests.push(node.expression);
         }

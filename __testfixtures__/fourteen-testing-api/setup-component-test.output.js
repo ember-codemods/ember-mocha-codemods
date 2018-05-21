@@ -11,6 +11,13 @@ describe('GravatarImageComponent', function() {
     await render(hbs`{{gravatar-image}}`);
     expect(this.$('img')).to.exist;
   });
+
+  ['foo'].forEach(t => {
+    it('renders', async function() {
+      await render(hbs`{{gravatar-image}}`);
+      expect(this.$('img')).to.exist;
+    });
+  });
 });
 
 describe('GravatarImageComponent', function() {

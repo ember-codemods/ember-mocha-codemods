@@ -12,6 +12,13 @@ describe('GravatarImageComponent', function() {
     this.render(hbs`{{gravatar-image}}`);
     expect(this.$('img')).to.exist;
   });
+
+  ['foo'].forEach(t => {
+    it('renders', function() {
+      this.render(hbs`{{gravatar-image}}`);
+      expect(this.$('img')).to.exist;
+    });
+  });
 });
 
 describe('GravatarImageComponent', function() {
