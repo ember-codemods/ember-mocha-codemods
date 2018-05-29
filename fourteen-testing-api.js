@@ -143,6 +143,7 @@ module.exports = function(file, api) {
       this.isEmberMochaDescribe = false;
       this.tests = [];
       this.lifecycles = [];
+      this.body = p.node.expression.arguments[1].body;
       let describeBody = p.node.expression.arguments[1].body.body;
 
       describeBody.forEach(node => {
@@ -177,6 +178,13 @@ module.exports = function(file, api) {
           this.isEmberMochaDescribe = true;
           this.testVarDeclarationName = isAcceptanceTest.value.expression.left.name;
 
+          // Add setupApplicationTest to beginning of body
+          let exp = j.expressionStatement(
+            j.callExpression(j.identifier('setupApplicationTest'), [])
+          );
+          this.body.body[0] = exp;
+
+          // remove startApp invocation
           j(isAcceptanceTest).remove();
         }
 
@@ -672,11 +680,7 @@ module.exports = function(file, api) {
       .find(j.VariableDeclarator)
       .forEach(path => {
         if (path.node.id.name === name) {
-          let exp = j.expressionStatement(
-            j.callExpression(j.identifier('setupApplicationTest'), [])
-          );
-
-          path.parent.replace(exp);
+          path.parent.remove();
         }
       });
   }
