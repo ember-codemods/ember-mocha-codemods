@@ -17,6 +17,111 @@ module.exports = function(file, api) {
     });
   }
 
+  const GLOBAL_NODE_PATH_CACHE = new Map();
+  // returns startAppAssignment nodePath or false;
+  function findStartAppAssignment(nodePath) {
+
+    let startAppAssignment = GLOBAL_NODE_PATH_CACHE.has(nodePath);
+
+    if (startAppAssignment) { return GLOBAL_NODE_PATH_CACHE.get(nodePath) }
+
+    let assignments = j(nodePath).find(j.ExpressionStatement, { expression: { right: { callee: { name: 'startApp' } } } });
+
+    if (assignments.length >= 1) {
+      let foundAssignment = assignments.paths()[0];
+      GLOBAL_NODE_PATH_CACHE.set(nodePath, foundAssignment);
+      return foundAssignment;
+    } else {
+      return false;
+    }
+  }
+
+  function findDestroyAppCall(nodePath) {
+    let destroys = j(nodePath).find(j.ExpressionStatement, { expression: {callee: {  name: 'destroyApp' } } } )
+
+    if (destroys.length >= 1) {
+      let foundDestroy = destroys.paths()[0];
+      j(foundDestroy).remove();
+    }
+  }
+
+  function processExpressionForApplicationTest(testExpression) {
+    // mark the test function as an async function
+    let testExpressionCollection = j(testExpression);
+    // collect all potential statements to be imported
+    let specifiers = new Set();
+
+    // First - remove andThen blocks
+    removeAndThens(testExpressionCollection);
+
+    // Second - Transform to await visit(), click, fillIn, touch, etc and adds `async` to scope
+    [
+      'visit',
+      'find',
+      'waitFor',
+      'fillIn',
+      'click',
+      'blur',
+      'focus',
+      'tap',
+      'triggerEvent',
+      'triggerKeyEvent',
+    ].forEach(type => {
+      findApplicationTestHelperUsageOf(testExpressionCollection, type).forEach(p => {
+        specifiers.add(type);
+
+        let expression = p.get('expression');
+
+        let awaitExpression = j.awaitExpression(
+          j.callExpression(j.identifier(type), expression.node.arguments)
+        );
+        expression.replace(awaitExpression);
+        p.scope.node.async = true;
+      });
+    });
+
+    // Third - update call expressions that do not await
+    ['currentURL', 'currentRouteName'].forEach(type => {
+      testExpressionCollection
+        .find(j.CallExpression, {
+          callee: {
+            type: 'Identifier',
+            name: type,
+          },
+        })
+        .forEach(() => specifiers.add(type));
+    });
+  }
+
+  function removeAndThens(testExpressionCollection) {
+    let replacements = testExpressionCollection
+      .find(j.CallExpression, {
+        callee: {
+          name: 'andThen',
+        },
+      })
+      .map(path => path.parent)
+      .replaceWith(p => {
+        let body = p.node.expression.arguments[0].body
+        return body.body;
+      });
+
+    if (replacements.length > 0) {
+      removeAndThens(testExpressionCollection);
+    }
+  }
+
+  function findApplicationTestHelperUsageOf(collection, property) {
+    return collection.find(j.ExpressionStatement, {
+      expression: {
+        callee: {
+          type: 'Identifier',
+          name: property,
+        },
+      },
+    });
+  }
+
   const LIFE_CYCLE_METHODS = [
     { expression: { callee: { name: "before" } } },
     { expression: { callee: { name: "beforeEach" } } },
@@ -41,6 +146,10 @@ module.exports = function(file, api) {
       let describeBody = p.node.expression.arguments[1].body.body;
 
       describeBody.forEach(node => {
+        let isAcceptanceTest = findStartAppAssignment(node)
+        findDestroyAppCall(node);
+
+
         if (isSetupTypeMethod(node)) {
           let calleeName = node.expression.callee.name;
           let options = node.expression.arguments[1];
@@ -61,6 +170,14 @@ module.exports = function(file, api) {
 
           this.setupTypeMethodInvocationNode = node.expression;
           this.isEmberMochaDescribe = true;
+        } else if (isAcceptanceTest) {
+          this.hasIntegrationFlag = false;
+          this.setupType = 'setupApplicationTest';
+          this.subjectContainerKey = null;
+          this.isEmberMochaDescribe = true;
+          this.testVarDeclarationName = isAcceptanceTest.value.expression.left.name;
+
+          j(isAcceptanceTest).remove();
         }
 
         let testPaths = j(node).find(j.ExpressionStatement, { expression: { callee: { name: 'it' } }}).paths();
@@ -124,6 +241,8 @@ module.exports = function(file, api) {
     _updateExpressionForTest(expression) {
       if (this.setupType === "setupRenderingTest") {
         processExpressionForRenderingTest(expression);
+      } else if (this.setupType === 'setupApplicationTest') {
+        processExpressionForApplicationTest(expression)
       }
     }
 
@@ -147,6 +266,47 @@ module.exports = function(file, api) {
       [...this.lifecycles, ...this.tests].forEach(e => processSubject(e, this));
     }
   }
+
+  function migrateAcceptanceTestImports() {
+    let imports = root.find(j.ImportDeclaration);
+    let foundStartApp = false;
+    imports
+      .find(j.ImportDefaultSpecifier, {
+        local: {
+          type: 'Identifier',
+          name: 'startApp',
+        },
+      })
+      .forEach(p => {
+        foundStartApp = true;
+        // add setupApplicationTest import
+        ensureImportWithSpecifiers({
+          source: 'ember-mocha',
+          anchor: 'mocha',
+          specifiers: ['setupApplicationTest'],
+        });
+        // ensure module import if acceptance test
+        ensureImportWithSpecifiers({
+          source: 'mocha',
+          specifiers: ['describe'],
+        });
+        // remove existing moduleForAcceptance import
+        j(p.parentPath.parentPath).remove();
+      });
+
+    // remove `destroyApp` import also
+    if (foundStartApp) {
+      imports.find(j.ImportDefaultSpecifier, {
+        local: {
+          type: 'Identifier',
+          name: 'destroyApp'
+        }
+      }).forEach(p => {
+        j(p.parentPath.parentPath).remove();
+      })
+    }
+  }
+
 
   function updateRegisterCalls(e) {
     j(e)
@@ -492,15 +652,58 @@ module.exports = function(file, api) {
       let moduleInfo = new ModuleInfo(path);
       if (!moduleInfo.isEmberMochaDescribe) { return; }
 
+
       moduleInfo.update();
 
+
       updateOnCalls(path);
+
+
+      if (moduleInfo.setupType === 'setupApplicationTest') {
+        replaceApplicationTestVariableDeclarator(path, moduleInfo.testVarDeclarationName)
+      }
+
+      _removeUnusedLifecycleHooks(path)
     })
   }
+
+  function replaceApplicationTestVariableDeclarator(node, name) {
+    j(node)
+      .find(j.VariableDeclarator)
+      .forEach(path => {
+        if (path.node.id.name === name) {
+          let exp = j.expressionStatement(
+            j.callExpression(j.identifier('setupApplicationTest'), [])
+          );
+
+          path.parent.replace(exp);
+        }
+      });
+  }
+
+  function _removeUnusedLifecycleHooks(path) {
+    ['beforeEach', 'afterEach', 'before', 'after'].forEach(name => {
+      j(path)
+        .find(j.ExpressionStatement, {
+          expression: {
+            callee: {
+              name
+            }
+          }
+        })
+        .forEach(node => {
+          if (!node.value.expression.arguments[0].body.body.length >= 1) {
+            j(node).remove()
+          }
+        });
+    });
+  }
+
 
   const printOptions = { quote: "single", wrapColumn: 100 };
 
   updateToNewEmberMochaImports();
+  migrateAcceptanceTestImports();
   processDescribeBlock();
 
   return root.toSource(printOptions);
