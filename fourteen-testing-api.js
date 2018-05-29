@@ -182,7 +182,7 @@ module.exports = function(file, api) {
           let exp = j.expressionStatement(
             j.callExpression(j.identifier('setupApplicationTest'), [])
           );
-          this.body.body[0] = exp;
+          this.body.body =  [exp, ...this.body.body];
 
           // remove startApp invocation
           j(isAcceptanceTest).remove();
@@ -680,7 +680,7 @@ module.exports = function(file, api) {
       .find(j.VariableDeclarator)
       .forEach(path => {
         if (path.node.id.name === name) {
-          path.parent.remove();
+          j(path.parent).remove();
         }
       });
   }
