@@ -96,6 +96,32 @@ After:
 import { it } from 'mocha';
 ```
 
+### Testing API beginning in 0.14
+
+Changes your code to be compliant with the migration guide found [here](https://github.com/emberjs/ember-mocha/blob/master/docs/migration.md).
+
+The API beginning in 0.14 introduces many shared helpers and setup across the various types of Ember.js tests.  Formerly these types were called: `acceptance` for application wide concerns, `integration` for component tests (both rendering and user interaction), and finally `unit` tests for testing individual units at the lowest level.  In the newest API these have been reframed as `application` tests (formerly `acceptance`), `rendering` tests (formerly `integration`), and `unit` tests are largely unchanged.
+
+The majority of these changes are to unify test setup and helper usage.  A detailed list of the new helper APIs can be found [here](https://github.com/emberjs/ember-test-helpers/blob/master/API.md).
+
+This codemod will follow the migration guide to help you move your test suite from the style defined in 0.9 to the style defined in 0.14.
+
+It is important to review these changes, since there are many different configurations which this codemod attempts to reconcile with the new style you'll still need to review files after running this and make the necessary adjustments.  If you notice something that you feel the codemod should handle and doesn't please leave an issue with clearly defined inputs and outputs and an explanation of why you think it should handle this and we'll discuss resolutions.
+
+To begin this code mod:
+
+```
+jscodeshift -t https://raw.githubusercontent.com/Turbo87/ember-mocha-codemods/master/fourteen-testing-api.js PATH
+```
+
+This will do much of what you want, but notably does not handle many of the new helpers from `@ember/test-helpers` this is because there is another codemod that should also be run which can be found [here](https://github.com/simonihmig/ember-test-helpers-codemod).
+
+```
+cd my-ember-app-or-addon
+npx ember-test-helpers-codemod --type=integration tests/integration
+npx ember-test-helpers-codemod --type=acceptance tests/acceptance
+npx ember-test-helpers-codemod --type=native-dom tests
+```
 
 License
 ------------------------------------------------------------------------------
