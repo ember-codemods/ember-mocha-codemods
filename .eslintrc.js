@@ -5,6 +5,15 @@ module.exports = {
   },
   env: {
     'node': true,
+    'es6': true,
   },
   extends: 'eslint:recommended',
+  overrides: [
+    {
+      files: ['__tests__/**/*.js'],
+      env: {
+        jest: true
+      }
+    },
+  ],
 };
