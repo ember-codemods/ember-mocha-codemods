@@ -696,7 +696,8 @@ module.exports = function(file, api) {
           }
         })
         .forEach(node => {
-          if (!node.value.expression.arguments[0].body.body.length >= 1) {
+          const { body } = node.value.expression.arguments[0];
+          if (body && body.body && !body.body.length >= 1) {
             j(node).remove()
           }
         });
