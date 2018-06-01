@@ -8,14 +8,19 @@ import hbs from 'htmlbars-inline-precompile';
 describe('GravatarImageComponent', function() {
   setupRenderingTest();
 
-  let render;
+  let render2;
   beforeEach(async function() {
-    render = () =>
-      this.render(hbs`{{gravatar-image foo=(action 'bar')}}`);
+    this.set('bar', function() {});
+
+    this.set('foo', function() {});
+
+    await render(hbs`{{gravatar-image foo=(action bar)}}`);
+    render2 = async () =>
+      await render(hbs`{{gravatar-image foo=(action 'bar')}}`);
   });
 
   it('renders', async function() {
     expect(this.$('img')).to.exist;
-    await render(hbs`{{gravatar-image foo=(action foo)}}`);
+    await render2();
   });
 });
