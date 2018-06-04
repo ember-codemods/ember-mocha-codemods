@@ -9,14 +9,9 @@ describe('GravatarImageComponent', function() {
   setupRenderingTest();
 
   let render2;
-  beforeEach(async function() {
-    this.set('bar', function() {});
-
-    this.set('foo', function() {});
-
-    await render(hbs`{{gravatar-image foo=(action bar)}}`);
+  beforeEach(function() {
     render2 = async () =>
-      await render(hbs`{{gravatar-image foo=(action 'bar')}}`);
+      render(hbs`{{gravatar-image foo=(action 'bar')}}`);
   });
 
   it('renders', async function() {
