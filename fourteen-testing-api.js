@@ -513,6 +513,38 @@ module.exports = function(file, api) {
     let testExpressionCollection = j(testExpression);
     let specifiers = new Set();
 
+    // transforms render function expressions into async
+    ["render"].forEach(type => {
+      testExpressionCollection.find(j.AssignmentExpression, {
+        left: {
+          type: "Identifier",
+          name: type
+        },
+        right: {
+          type: "ArrowFunctionExpression"
+        }
+      })
+        .forEach(p => {
+          // mark the right hand expression as an async function
+          p.value.right.async = true;
+        });
+      testExpressionCollection.find(j.CallExpression, {
+        callee: {
+          object: {
+            type: "ThisExpression"
+          },
+          property: {
+            name: type
+          }
+        }
+      }).forEach(p => {
+        let expression = p.get("expression");
+
+        // console.log("source", j(j.callExpression(j.identifier(type), expression.node.arguments)).toSource())
+        // console.log('size', j(p.node).toSource())
+        p.replace(j.callExpression(j.identifier(type), expression.node.arguments));
+      });
+    });
     // Transform to await render() or await clearRender()
     ["render", "clearRender"].forEach(type => {
       findTestHelperUsageOf(testExpressionCollection, type).forEach(p => {
@@ -527,6 +559,7 @@ module.exports = function(file, api) {
         p.scope.node.async = true;
       });
     });
+
 
     ensureImportWithSpecifiers({
       source: "@ember/test-helpers",
@@ -686,7 +719,27 @@ module.exports = function(file, api) {
   }
 
   function _removeUnusedLifecycleHooks(path) {
-    ['beforeEach', 'afterEach', 'before', 'after'].forEach(name => {
+    ["beforeEach", "afterEach", "before", "after"].forEach(name => {
+      if (name.startsWith("before")) {
+        j(path).find(j.AssignmentExpression, {
+          left: {
+            type: 'Identifier',
+            name: 'render'
+          }
+        }).forEach(p => {
+          p.node.left.name = 'render2';
+        });
+
+        j(path).find(j.Identifier, {
+          type: 'Identifier',
+          name: 'render'
+        }).filter(p => {
+          return p.parentPath.parentPath.value.type !== 'ArrowFunctionExpression';
+        })
+          .forEach(p => {
+            p.node.name = 'render2';
+          });
+      }
       j(path)
         .find(j.ExpressionStatement, {
           expression: {
@@ -696,8 +749,9 @@ module.exports = function(file, api) {
           }
         })
         .forEach(node => {
-          if (!node.value.expression.arguments[0].body.body.length >= 1) {
-            j(node).remove()
+          const { body } = node.value.expression.arguments[0];
+          if (body && body.body && !body.body.length >= 1) {
+            j(node).remove();
           }
         });
     });
