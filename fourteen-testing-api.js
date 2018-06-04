@@ -126,6 +126,7 @@ module.exports = function(file, api) {
     { expression: { callee: { name: "before" } } },
     { expression: { callee: { name: "beforeEach" } } },
     { expression: { callee: { name: "afterEach" } } },
+    { expression: { callee: { name: "context" } } },
     { expression: { callee: { name: "after" } } }
   ];
 
@@ -528,6 +529,9 @@ module.exports = function(file, api) {
       });
     });
 
+    if (specifiers.size === 0) {
+      specifiers.add("render");
+    }
     ensureImportWithSpecifiers({
       source: "@ember/test-helpers",
       anchor: "ember-mocha",
@@ -671,6 +675,7 @@ module.exports = function(file, api) {
         replaceApplicationTestVariableDeclarator(path, moduleInfo.testVarDeclarationName)
       }
 
+      _relabelExistingRenders(path);
       _removeUnusedLifecycleHooks(path)
     })
   }
@@ -685,8 +690,97 @@ module.exports = function(file, api) {
       });
   }
 
+  function _relabelExistingRenders(path) {
+    const hasExisting = j(path).find(j.VariableDeclarator, {
+      id: {
+        name: "render"
+      }
+    }).filter(p => {
+      return p.parentPath.parentPath.value.kind === "let";
+    });
+
+    const curHook = j(path);
+    // transforms render function expressions into async
+    ["render"].forEach(type => {
+      curHook.find(j.AssignmentExpression, {
+        left: {
+          type: "Identifier",
+          name: "render"
+        },
+        right: {
+          type: "ArrowFunctionExpression"
+        }
+      })
+        .forEach(p => {
+          // mark the right hand expression as an async function
+          p.value.right.async = true;
+        });
+      curHook.find(j.CallExpression, {
+        callee: {
+          object: {
+            type: "ThisExpression"
+          },
+          property: {
+            name: type
+          }
+        }
+      }).forEach(p => {
+        let expression = p.get("expression");
+        p.replace(j.callExpression(j.identifier(type), expression.node.arguments));
+      });
+    });
+
+    const newAlias = "render2";
+    const finder = a => a.type === "VariableDeclarator" && a.id.name === "render";
+    j(path).find(j.VariableDeclaration, {
+      kind: "let"
+    })
+    .filter(p => {
+      return p.value.declarations.find(finder);
+    })
+      .forEach(p => {
+        try {
+          const { declarations } = p.value;
+          const relevant = declarations.find(finder);
+          relevant.id.name = newAlias;
+        } catch (err) { } // eslint-disable-line no-empty
+      });
+    if (hasExisting.size() === 1) {
+      j(path).find(j.AssignmentExpression, {
+        left: {
+          type: "Identifier",
+          name: "render"
+        },
+        right: {
+          type: "ArrowFunctionExpression"
+        }
+      }).forEach(p => {
+        p.node.left.name = newAlias;
+      });
+
+      // rename renders in it blocks
+      j(path).find(j.ExpressionStatement, {
+        expression: {
+          type: "CallExpression",
+          callee: {
+            name: "render"
+          }
+        }
+      })
+        .forEach(p => {
+          p.node.expression.callee.name = newAlias;
+          let expression = p.get("expression");
+          let awaitExpression = j.awaitExpression(
+            j.callExpression(j.identifier(newAlias), expression.node.arguments)
+          );
+          p.scope.node.async = true;
+          expression.replace(awaitExpression);
+        })
+    }
+}
+
   function _removeUnusedLifecycleHooks(path) {
-    ['beforeEach', 'afterEach', 'before', 'after'].forEach(name => {
+    ['beforeEach', 'afterEach', 'before', 'after', 'context',].forEach(name => {
       j(path)
         .find(j.ExpressionStatement, {
           expression: {
@@ -696,6 +790,9 @@ module.exports = function(file, api) {
           }
         })
         .forEach(node => {
+          if (!node.value.expression.arguments[0].body) {
+            return;
+          }
           if (!node.value.expression.arguments[0].body.body.length >= 1) {
             j(node).remove()
           }
