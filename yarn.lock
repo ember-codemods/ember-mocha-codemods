@@ -201,9 +201,9 @@ assign-symbols@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/assign-symbols/-/assign-symbols-1.0.0.tgz#59667f41fadd4f20ccbc2bb96b8d4f7f78ec0367"
 
-ast-types@0.11.3:
-  version "0.11.3"
-  resolved "https://registry.yarnpkg.com/ast-types/-/ast-types-0.11.3.tgz#c20757fe72ee71278ea0ff3d87e5c2ca30d9edf8"
+ast-types@0.11.5:
+  version "0.11.5"
+  resolved "https://registry.yarnpkg.com/ast-types/-/ast-types-0.11.5.tgz#9890825d660c03c28339f315e9fa0a360e31ec28"
 
 astral-regex@^1.0.0:
   version "1.0.0"
@@ -889,7 +889,7 @@ babylon@^6.18.0:
   version "6.18.0"
   resolved "https://registry.yarnpkg.com/babylon/-/babylon-6.18.0.tgz#af2f3b88fa6f5c1e4c634d1a0f8eac4f55b395e3"
 
-babylon@^7.0.0-beta.30:
+babylon@^7.0.0-beta.47:
   version "7.0.0-beta.47"
   resolved "https://registry.yarnpkg.com/babylon/-/babylon-7.0.0-beta.47.tgz#6d1fa44f0abec41ab7c780481e62fd9aafbdea80"
 
@@ -2640,15 +2640,15 @@ jschardet@^1.4.2:
   version "1.5.1"
   resolved "https://registry.yarnpkg.com/jschardet/-/jschardet-1.5.1.tgz#c519f629f86b3a5bedba58a88d311309eec097f9"
 
-jscodeshift@^0.5.0:
-  version "0.5.0"
-  resolved "https://registry.yarnpkg.com/jscodeshift/-/jscodeshift-0.5.0.tgz#bdb7b6cc20dd62c16aa728c3fa2d2fe66ca7c748"
+jscodeshift@^0.5.1:
+  version "0.5.1"
+  resolved "https://registry.yarnpkg.com/jscodeshift/-/jscodeshift-0.5.1.tgz#4af6a721648be8638ae1464a190342da52960c33"
   dependencies:
     babel-plugin-transform-flow-strip-types "^6.8.0"
     babel-preset-es2015 "^6.9.0"
     babel-preset-stage-1 "^6.5.0"
     babel-register "^6.9.0"
-    babylon "^7.0.0-beta.30"
+    babylon "^7.0.0-beta.47"
     colors "^1.1.2"
     flow-parser "^0.*"
     lodash "^4.13.1"
@@ -2656,7 +2656,7 @@ jscodeshift@^0.5.0:
     neo-async "^2.5.0"
     node-dir "0.1.8"
     nomnom "^1.8.1"
-    recast "^0.14.1"
+    recast "^0.15.0"
     temp "^0.8.1"
     write-file-atomic "^1.2.0"
 
@@ -3381,11 +3381,11 @@ realpath-native@^1.0.0:
   dependencies:
     util.promisify "^1.0.0"
 
-recast@^0.14.1:
-  version "0.14.7"
-  resolved "https://registry.yarnpkg.com/recast/-/recast-0.14.7.tgz#4f1497c2b5826d42a66e8e3c9d80c512983ff61d"
+recast@^0.15.0:
+  version "0.15.0"
+  resolved "https://registry.yarnpkg.com/recast/-/recast-0.15.0.tgz#b8c8bfdda245e1580c0a4d9fc25d4e820bf57208"
   dependencies:
-    ast-types "0.11.3"
+    ast-types "0.11.5"
     esprima "~4.0.0"
     private "~0.1.5"
     source-map "~0.6.1"
