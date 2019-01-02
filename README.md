@@ -118,9 +118,9 @@ This will do much of what you want, but notably does not handle many of the new 
 
 ```
 cd my-ember-app-or-addon
-npx ember-test-helpers-codemod --type=integration tests/integration
-npx ember-test-helpers-codemod --type=acceptance tests/acceptance
-npx ember-test-helpers-codemod --type=native-dom tests
+npx ember-test-helpers-codemod integration tests/integration
+npx ember-test-helpers-codemod acceptance tests/acceptance
+npx ember-test-helpers-codemod native-dom tests
 ```
 
 License
