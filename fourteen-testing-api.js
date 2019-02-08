@@ -36,6 +36,30 @@ module.exports = function(file, api) {
     }
   }
 
+  // returns boolean for other unit tests with needs object argument
+  // the lengthy isSetupNeedsTest safely checks for
+  // patterns in ember-mocha test suites that called setupTest with 2 arguments
+  // 1st, the path of the object 2nd the configuration of what that test needed
+  // setupTest('controller:my-controller', {
+  //   needs: [
+  //     'service:ajax',
+  //     'controller:application'
+  //   ]
+  // });
+  function findOtherUnitTestSetup(nodePath) {
+    let hasSetup = j(nodePath).find(j.ExpressionStatement, { expression: { callee: {  name: 'setupTest' } } } )
+    let isSetupNeeds = hasSetup
+      && j.ExpressionStatement.check(nodePath)
+      && nodePath.expression.arguments
+      && nodePath.expression.arguments.length === 2
+      && j.Literal.check(nodePath.expression.arguments[0])
+      && (
+        nodePath.expression.arguments[0].value.startsWith('route:')
+        || nodePath.expression.arguments[0].value.startsWith('controller:')
+      )
+    return isSetupNeeds ;
+  }
+
   function findDestroyAppCall(nodePath) {
     let destroys = j(nodePath).find(j.ExpressionStatement, { expression: {callee: {  name: 'destroyApp' } } } )
 
@@ -148,10 +172,11 @@ module.exports = function(file, api) {
       let describeBody = p.node.expression.arguments[1].body.body;
 
       describeBody.forEach(node => {
-        let isAcceptanceTest = findStartAppAssignment(node)
+        let isAcceptanceTest = findStartAppAssignment(node);
         findDestroyAppCall(node);
 
 
+        let isOtherUnitTest = findOtherUnitTestSetup(node);
         if (isSetupTypeMethod(node)) {
           let calleeName = node.expression.callee.name;
           let options = node.expression.arguments[1];
@@ -187,6 +212,11 @@ module.exports = function(file, api) {
 
           // remove startApp invocation
           j(isAcceptanceTest).remove();
+        } else if (isOtherUnitTest) {
+          this.setupType = 'setupTest';
+          this.setupTypeMethodInvocationNode = node.expression;
+          this.subjectContainerKey = j.literal(node.expression.arguments[0].value);
+          this.isEmberMochaDescribe = true;
         }
 
         let testPaths = j(node).find(j.ExpressionStatement, { expression: { callee: { name: 'it' } }}).paths();
@@ -216,7 +246,7 @@ module.exports = function(file, api) {
             if (parentMod && parentMod.isEmberMochaDescribe) {
               this.isEmberMochaDescribe = true;
               this.setupType = parentMod.setupType;
-              this.subjectContainerKey = this.subjectContainerKey;
+              this.subjectContainerKey = parentMod.subjectContainerKey;
             }
           }
           current = current.parentPath;
