@@ -54,8 +54,7 @@ module.exports = function(file, api) {
       && nodePath.expression.arguments.length === 2
       && j.Literal.check(nodePath.expression.arguments[0])
       && (
-        nodePath.expression.arguments[0].value.startsWith('route:')
-        || nodePath.expression.arguments[0].value.startsWith('controller:')
+        /^(adapter|route|controller|service|serializer):/.test(nodePath.expression.arguments[0].value)
       )
     return isSetupNeeds ;
   }
