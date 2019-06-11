@@ -4,7 +4,7 @@ module.exports = function(file, api) {
   const j = api.jscodeshift;
   const root = j(file.source);
 
-  const SETUP_TYPE_METHODS = ["setupComponentTest"];
+  const SETUP_TYPE_METHODS = ["setupComponentTest", "setupModelTest"];
 
   function isSetupTypeMethod(nodePath) {
     return SETUP_TYPE_METHODS.some(name => {
@@ -192,6 +192,9 @@ module.exports = function(file, api) {
               this.setupType = "setupTest";
               this.subjectContainerKey = j.literal(`component:${node.expression.arguments[0].value}`);
             }
+          } else if (calleeName === 'setupModelTest') {
+            this.setupType = 'setupTest';
+            this.modelName = node.expression.arguments[0].value;
           }
 
           this.setupTypeMethodInvocationNode = node.expression;
@@ -458,9 +461,16 @@ module.exports = function(file, api) {
 
     thisDotSubjectUsage.forEach(p => {
       let options = p.node.arguments[0];
-      let split = subject.value.split(':');
-      let subjectType = split[0];
-      let subjectName = split[1];
+      let subjectType;
+      let subjectName;
+      if ('modelName' in moduleInfo) {
+        subjectType = 'model';
+        subjectName = moduleInfo.modelName;
+      } else {
+        let split = subject.value.split(':');
+        subjectType = split[0];
+        subjectName = split[1];
+      }
       let isSingletonSubject = ['model', 'component'].indexOf(subjectType) === -1;
 
       // if we don't have `options` and the type is a singleton type
@@ -476,15 +486,7 @@ module.exports = function(file, api) {
           )
         );
       } else if (subjectType === 'model') {
-        ensureImportWithSpecifiers({
-          source: '@ember/runloop',
-          specifiers: ['run'],
-        });
-
         p.replace(
-          j.callExpression(j.identifier('run'), [
-            j.arrowFunctionExpression(
-              [],
               j.callExpression(
                 j.memberExpression(
                   j.callExpression(
@@ -496,11 +498,10 @@ module.exports = function(file, api) {
                   ),
                   j.identifier('createRecord')
                 ),
-                [j.literal(subjectName), options].filter(Boolean)
-              ),
-              true
-            ),
-          ])
+                // creating an empty object expression {} as the 2nd argument here
+                // because setupModelTests shouldn't need store dependencies
+                [j.literal(subjectName), j.objectExpression([])].filter(Boolean)
+              )
         );
       } else {
         p.replace(
@@ -630,7 +631,8 @@ module.exports = function(file, api) {
 
   function updateToNewEmberMochaImports() {
     let mapping = {
-      setupComponentTest: "setupRenderingTest"
+      setupComponentTest: "setupRenderingTest",
+      setupModelTest: "setupTest"
     };
 
     let emberMochaImports = root.find(j.ImportDeclaration, { source: { value: "ember-mocha" } });
