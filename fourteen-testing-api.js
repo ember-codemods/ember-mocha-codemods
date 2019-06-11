@@ -54,7 +54,7 @@ module.exports = function(file, api) {
       && nodePath.expression.arguments.length === 2
       && j.Literal.check(nodePath.expression.arguments[0])
       && (
-        /^(adapter|route|controller|service|serializer):/.test(nodePath.expression.arguments[0].value)
+        /^(adapter|controller|route|service|serializer|transform):/.test(nodePath.expression.arguments[0].value)
       )
     return isSetupNeeds ;
   }
@@ -471,7 +471,7 @@ module.exports = function(file, api) {
         subjectType = split[0];
         subjectName = split[1];
       }
-      let isSingletonSubject = ['model', 'component'].indexOf(subjectType) === -1;
+      let isSingletonSubject = !['model', 'component', 'serializer'].includes(subjectType);
 
       // if we don't have `options` and the type is a singleton type
       // use `this.owner.lookup(subject)`
@@ -484,6 +484,22 @@ module.exports = function(file, api) {
             ),
             [subject]
           )
+        );
+      } else if (subjectType === 'serializer') {
+        p.replace(
+              j.callExpression(
+                j.memberExpression(
+                  j.callExpression(
+                    j.memberExpression(
+                      j.memberExpression(j.thisExpression(), j.identifier('owner')),
+                      j.identifier('lookup')
+                    ),
+                    [j.literal('service:store')]
+                  ),
+                  j.identifier('serializerFor')
+                ),
+                [j.literal(subjectName)].filter(Boolean)
+              )
         );
       } else if (subjectType === 'model') {
         p.replace(
