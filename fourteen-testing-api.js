@@ -502,6 +502,9 @@ module.exports = function(file, api) {
               )
         );
       } else if (subjectType === 'model') {
+        let createRecordArg = p.node.arguments[0] ?
+          p.node.arguments[0] :  /* the argument provided to this.subject() */
+          j.objectExpression([]) /* empty object expression {} */;
         p.replace(
               j.callExpression(
                 j.memberExpression(
@@ -516,7 +519,7 @@ module.exports = function(file, api) {
                 ),
                 // creating an empty object expression {} as the 2nd argument here
                 // because setupModelTests shouldn't need store dependencies
-                [j.literal(subjectName), j.objectExpression([])].filter(Boolean)
+                [j.literal(subjectName), createRecordArg].filter(Boolean)
               )
         );
       } else {
