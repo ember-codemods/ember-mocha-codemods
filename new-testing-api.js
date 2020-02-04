@@ -1,4 +1,6 @@
-export default function(file, api, options) {
+"use strict";
+
+module.exports = function(file, api, options) {
   const j = api.jscodeshift;
 
   const mapping = {
