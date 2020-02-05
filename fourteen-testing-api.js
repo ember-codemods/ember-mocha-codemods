@@ -502,26 +502,52 @@ module.exports = function(file, api) {
               )
         );
       } else if (subjectType === 'model') {
-        let createRecordArg = p.node.arguments[0] ?
-          p.node.arguments[0] :  /* the argument provided to this.subject() */
-          j.objectExpression([]) /* empty object expression {} */;
-        p.replace(
-              j.callExpression(
-                j.memberExpression(
-                  j.callExpression(
-                    j.memberExpression(
-                      j.memberExpression(j.thisExpression(), j.identifier('owner')),
-                      j.identifier('lookup')
+        let createRecordArg = p.node.arguments[0], /* the argument provided to this.subject() */
+            emptyObjectExpression = j.objectExpression([]); /* empty object expression {} */
+
+        if( createRecordArg ){
+          // If there is an argument provided to this.subject, wrap it in a run loop
+          p.replace(
+            j.callExpression(
+              j.memberExpression(
+                j.identifier('Ember'), j.identifier('run')
+              ), [j.arrowFunctionExpression(
+                [],
+                j.callExpression(
+                  j.memberExpression(
+                    j.callExpression(
+                      j.memberExpression(
+                        j.memberExpression(j.thisExpression(), j.identifier('owner')),
+                        j.identifier('lookup')
+                      ),
+                      [j.literal('service:store')]
                     ),
-                    [j.literal('service:store')]
+                    j.identifier('createRecord')
                   ),
-                  j.identifier('createRecord')
+                  [j.literal(subjectName), createRecordArg].filter(Boolean)
+                )
+              )]
+            )
+          );
+        } else {
+          p.replace(
+            j.callExpression(
+              j.memberExpression(
+                j.callExpression(
+                  j.memberExpression(
+                    j.memberExpression(j.thisExpression(), j.identifier('owner')),
+                    j.identifier('lookup')
+                  ),
+                  [j.literal('service:store')]
                 ),
-                // creating an empty object expression {} as the 2nd argument here
-                // because setupModelTests shouldn't need store dependencies
-                [j.literal(subjectName), createRecordArg].filter(Boolean)
-              )
-        );
+                j.identifier('createRecord')
+              ),
+              // creating an empty object expression {} as the 2nd argument here
+              [j.literal(subjectName), emptyObjectExpression].filter(Boolean)
+            )
+          );
+        }
+
       } else {
         p.replace(
           j.callExpression(
