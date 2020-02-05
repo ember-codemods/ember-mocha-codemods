@@ -1,8 +1,9 @@
 "use strict";
 
-module.exports = function(file, api) {
+module.exports = function(file, api, options) {
   const j = api.jscodeshift;
   const root = j(file.source);
+  const codeShiftOptions = options;
 
   const SETUP_TYPE_METHODS = ["setupComponentTest", "setupModelTest"];
 
@@ -502,11 +503,12 @@ module.exports = function(file, api) {
               )
         );
       } else if (subjectType === 'model') {
-        let createRecordArg = p.node.arguments[0] ?
-              p.node.arguments[0] :  /* the argument provided to this.subject() */
-              j.objectExpression([]) /* empty object expression {} */;
-        p.replace(
-              j.callExpression(
+        // this.subject({props}) => this.owner.lookup('service:store').createRecord({props});
+
+        let createRecordArg = p.node.arguments[0] || j.objectExpression([]), /* the argument provided to this.subject() OR empty object expression*/
+            { wrapCreateModelWithRunLoop } = codeShiftOptions,
+            createRecordExpression = (createRecordArg) => {
+              return j.callExpression(
                 j.memberExpression(
                   j.callExpression(
                     j.memberExpression(
@@ -517,11 +519,33 @@ module.exports = function(file, api) {
                   ),
                   j.identifier('createRecord')
                 ),
-                // creating an empty object expression {} as the 2nd argument here
-                // because setupModelTests shouldn't need store dependencies
                 [j.literal(subjectName), createRecordArg].filter(Boolean)
               )
-        );
+            },
+            runLoopExpression = (content) => {
+              return j.callExpression(
+                j.memberExpression(
+                  j.identifier('Ember'), j.identifier('run')
+                ), [j.arrowFunctionExpression(
+                  [],
+                  content
+                )]
+              )
+            };
+
+        if( wrapCreateModelWithRunLoop ){
+          // If the user has opted into wrapping with run loop
+          p.replace(
+            runLoopExpression(
+              createRecordExpression(createRecordArg)
+            )
+          );
+        } else {
+          p.replace(
+            createRecordExpression(createRecordArg)
+          );
+        }
+
       } else {
         p.replace(
           j.callExpression(
