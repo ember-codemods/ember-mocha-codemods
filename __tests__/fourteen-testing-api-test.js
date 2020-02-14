@@ -13,7 +13,7 @@ describe('fourteen-testing-api', function() {
     .readdirSync(fixtureFolder)
     .filter(filename => /\.input\.js$/.test(filename))
     .forEach(filename => {
-      // filename format - the-test-name.option1=foo.option2=bar.inputX.js
+      // filename format - the-test-name.option1=foo.option2=bar.input.js
 
       let testNameWithOptions = filename.replace('.input.js', ''), // the-test-name.option1=foo.option2=bar
           codeshiftOptions = testNameWithOptions.split('.').slice(1).reduce((p,c) => {p[c.split('=')[0]] = c.split('=')[1]; return p;}, {}), // {option1:foo, option2:bar}
