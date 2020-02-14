@@ -123,6 +123,23 @@ npx ember-test-helpers-codemod acceptance tests/acceptance
 npx ember-test-helpers-codemod native-dom tests
 ```
 
+Contributing
+------------------------------------------------------------------------------
+
+Contributions are welcome. Please follow the instructions below to install and run the tests.
+
+### Installation
+
+```sh
+yarn install
+```
+
+### Testing
+
+```sh
+yarn test
+```
+
 License
 ------------------------------------------------------------------------------
 ember-mocha-codemods is licensed under the [MIT License](LICENSE).
