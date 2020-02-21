@@ -123,6 +123,15 @@ npx ember-test-helpers-codemod acceptance tests/acceptance
 npx ember-test-helpers-codemod native-dom tests
 ```
 
+## Codeshift Options
+`--wrapCreateModelWithRunLoop=true`
+
+This option will wrap `createRecord` calls with a runLoop. This was needed in older versions of Ember to avoid this error: "You have turned on testing mode, which disabled the run-loop's autorun."
+```
+let model = this.subject({a:'a'}); //before
+let model = Ember.run(() => this.owner.lookup('service:store').createRecord('rental', {a:'a'})); //after
+``` 
+
 License
 ------------------------------------------------------------------------------
 ember-mocha-codemods is licensed under the [MIT License](LICENSE).

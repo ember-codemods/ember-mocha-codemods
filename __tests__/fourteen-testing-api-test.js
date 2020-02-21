@@ -13,15 +13,19 @@ describe('fourteen-testing-api', function() {
     .readdirSync(fixtureFolder)
     .filter(filename => /\.input\.js$/.test(filename))
     .forEach(filename => {
-      let testName = filename.replace('.input.js', '');
-      let inputPath = path.join(fixtureFolder, `${testName}.input.js`);
-      let outputPath = path.join(fixtureFolder, `${testName}.output.js`);
+      // filename format - the-test-name.option1=foo.option2=bar.input.js
+
+      let testNameWithOptions = filename.replace('.input.js', ''), // the-test-name.option1=foo.option2=bar
+          codeshiftOptions = testNameWithOptions.split('.').slice(1).reduce((p,c) => {p[c.split('=')[0]] = c.split('=')[1]; return p;}, {}), // {option1:foo, option2:bar}
+          testName = testNameWithOptions.split('.')[0], // the-test-name
+          inputPath = path.join(fixtureFolder, filename),
+          outputPath = path.join(fixtureFolder, `${testName}.output.js`);
 
       describe(testName, function() {
         it('transforms correctly', function() {
           runInlineTest(
             FourteenTestingAPITransform,
-            {},
+            codeshiftOptions,
             { source: fs.readFileSync(inputPath, 'utf8') },
             fs.readFileSync(outputPath, 'utf8')
           );
@@ -30,7 +34,7 @@ describe('fourteen-testing-api', function() {
         it('is idempotent', function() {
           runInlineTest(
             FourteenTestingAPITransform,
-            {},
+            codeshiftOptions,
             { source: fs.readFileSync(outputPath, 'utf8') },
             fs.readFileSync(outputPath, 'utf8')
           );
