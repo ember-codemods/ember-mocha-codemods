@@ -1,10 +1,40 @@
+/* eslint-env: node */
 'use strict';
 
-const defineTest = require('jscodeshift/dist/testUtils').defineTest;
+const fs = require('fs');
+const path = require('path');
 
-defineTest(__dirname, 'new-testing-api', {}, 'new-testing-api/component-test');
-defineTest(__dirname, 'new-testing-api', {}, 'new-testing-api/model-test');
-defineTest(__dirname, 'new-testing-api', {}, 'new-testing-api/route-test');
-defineTest(__dirname, 'new-testing-api', {}, 'new-testing-api/test-helper');
+const runInlineTest = require('jscodeshift/dist/testUtils').runInlineTest;
+const NewTestingAPITransform = require('../new-testing-api');
+const fixtureFolder = `${__dirname}/../__testfixtures__/new-testing-api`;
 
-defineTest(__dirname, 'new-testing-api', {}, 'new-testing-api/irrelevant-file');
+describe('new-testing-api', function() {
+  fs
+    .readdirSync(fixtureFolder)
+    .filter(filename => /\.input\.js$/.test(filename))
+    .forEach(filename => {
+      let testName = filename.replace('.input.js', '');
+      let inputPath = path.join(fixtureFolder, `${testName}.input.js`);
+      let outputPath = path.join(fixtureFolder, `${testName}.output.js`);
+
+      describe(testName, function() {
+        it('transforms correctly', function() {
+          runInlineTest(
+            NewTestingAPITransform,
+            {},
+            { source: fs.readFileSync(inputPath, 'utf8') },
+            fs.readFileSync(outputPath, 'utf8')
+          );
+        });
+
+        it('is idempotent', function() {
+          runInlineTest(
+            NewTestingAPITransform,
+            {},
+            { source: fs.readFileSync(outputPath, 'utf8') },
+            fs.readFileSync(outputPath, 'utf8')
+          );
+        });
+      });
+    });
+});
